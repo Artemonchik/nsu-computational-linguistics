@@ -1,5 +1,5 @@
 # task 1
-In this project you can count words in text and find information about them in opencorpa dict
+In this project you can count words in text and find information about them in opencorpora dict
 
 1. put texts files in directory ./texts
 2. put [opencorpora](http://opencorpora.org/files/export/dict/dict.opcorpora.xml.zip) xml dictionary in ./dict directory
