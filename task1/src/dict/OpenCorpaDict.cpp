@@ -54,3 +54,7 @@ Lemma OpenCorpaDict::getLemma(int idx) const {
                                      });
     return *vectorIdx;
 }
+
+int OpenCorpaDict::size() {
+    return (int) lemmas.size();
+}

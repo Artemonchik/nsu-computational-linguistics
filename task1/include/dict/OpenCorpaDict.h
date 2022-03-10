@@ -19,6 +19,7 @@ public:
 
     Lemma getLemma(int idx) const;
 
+    int size();
 private:
 
     void loadDescriptions(const std::string &dictFilePath);

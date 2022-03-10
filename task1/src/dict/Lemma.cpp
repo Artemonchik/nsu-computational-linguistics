@@ -23,3 +23,11 @@ int Lemma::getId() const {
 std::string Lemma::str() {
     return "id: " + std::to_string(lemma_id) + ", " +  initial_form.str();
 }
+
+const WordForm &Lemma::getInitialForm() const {
+    return initial_form;
+}
+
+void Lemma::setInitialForm(const WordForm &initialForm) {
+    initial_form = initialForm;
+}

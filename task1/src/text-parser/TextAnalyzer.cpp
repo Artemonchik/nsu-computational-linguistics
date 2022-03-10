@@ -7,8 +7,9 @@
 
 TextAnalyzer::TextAnalyzer(std::istream &inputStream) {
     readWords(inputStream);
-//    stripWords();
-    countWords();
+    stripWords();
+    countWordsFreq();
+    toLower();
     //TODO to lower case
 }
 
@@ -20,7 +21,7 @@ void TextAnalyzer::readWords(std::istream &inputStream) {
     }
 }
 
-void TextAnalyzer::countWords() {
+void TextAnalyzer::countWordsFreq() {
     for (auto &word: tokens) {
         if (!wordToCount.contains(word)) {
             wordToCount[word] = 0;
@@ -66,38 +67,57 @@ TextAnalyzer &TextAnalyzer::operator=(TextAnalyzer &&rhs) noexcept {
     return *this;
 }
 
-std::string TextAnalyzer::str() const {
-    std::stringstream stringstream;
-    if (dict == nullptr) {
-        stringstream << "Dict is not provided, so no lemmas information will be provided: " << std::endl;
-    }
+std::string TextAnalyzer::str(int limit, std::set<std::string> &props) const {
     std::vector<std::pair<std::string, int>> v;
     v.resize(wordToCount.size());
     std::copy(wordToCount.begin(), wordToCount.end(), v.begin());
     std::sort(v.begin(), v.end(), [](auto &left, auto &right) {
         return left.second > right.second;
     });
+    int i = 0;
+    std::stringstream result;
     for (auto &[word, count]: v) {
+        std::stringstream stringstream;
+        if (i > limit) {
+            break;
+        }
         stringstream << word << ": total count is " << count << std::endl;
-        if (dict != nullptr) {
-            auto lemmasIdSet = dict->getWordLemmas(word);
-            if(lemmasIdSet.size() == 0){
-                stringstream << "No lemmas was found for this word";
-            }else{
-                stringstream << "Possible lemmas id are: ";
-
-                std::copy(lemmasIdSet.begin(),
-                          lemmasIdSet.end(),
-                          std::ostream_iterator<int>(stringstream, " "));
-                stringstream << std::endl;
-                for (auto id: lemmasIdSet) {
-                    stringstream << "\t" << dict->getLemma(id).str() << std::endl;
-                }
+        if (dict == nullptr) {
+            continue;
+        }
+        auto lemmasIdSet = dict->getWordLemmas(word);
+        if (lemmasIdSet.size() == 0) {
+            stringstream << "No lemmas was found for this word";
+            continue;
+        }
+        Lemma first_lemma = dict->getLemma(*lemmasIdSet.begin());
+        if (!props.empty()) {
+            std::set<std::string> intersect;
+            std::set<std::string> lemmasPropSet(first_lemma.getInitialForm().getPropNames().begin(),
+                                                first_lemma.getInitialForm().getPropNames().end());
+            std::set_intersection(props.begin(), props.end(),
+                                  lemmasPropSet.begin(), lemmasPropSet.end(),
+                                  std::inserter(intersect, intersect.begin()));
+            if (intersect.empty()) {
+                continue;
             }
         }
+        stringstream << "Possible lemmas id are: ";
+
+        std::copy(lemmasIdSet.begin(),
+                  lemmasIdSet.end(),
+                  std::ostream_iterator<int>(stringstream, " "));
         stringstream << std::endl;
+        for (auto id: lemmasIdSet) {
+            stringstream << "\t" << dict->getLemma(id).str() << std::endl;
+        }
+
+        i++;
+
+        stringstream << std::endl;
+        result << stringstream.str();
     }
-    return stringstream.str();
+    return result.str();
 }
 
 void TextAnalyzer::setDict(OpenCorpaDict *corpaDict) {
@@ -109,11 +129,70 @@ void TextAnalyzer::stripWords() {
         for (int i = s.length() - 1; i >= 0; i--) {
             if (::ispunct(s[i])) {
                 s.erase(i, 1);
-            } else {
-                break;
             }
         }
     }
+}
+
+void ru_utf8_tolower(char *str) {
+    if (!str) return;
+    unsigned char *a, *b;
+    a = (unsigned char *) str;
+    while (*a != 0) {
+        if ((*a >= 0x41) && (*a <= 0x5a)) { // ENG
+            *a = 0x61 + (*a - 0x41);
+        } else if (*a == 0xd0) { // RUS
+            b = a++;
+            if (*a == 0) break;
+            if ((*a >= 0x90) && (*a <= 0x9f)) {
+                *a = 0xb0 + (*a - 0x90);
+            } else if ((*a >= 0xa0) && (*a <= 0xaf)) {
+                *a = 0x80 + (*a - 0xa0);
+                *b = 0xd1;
+            } else if (*a == 0x81) { // letter e:
+                *a = 0x91;
+                *b = 0xd1;
+            } else a--;
+        }
+        a++;
+    }
+}
+
+void TextAnalyzer::toLower() {
+    for (auto &word: tokens) {
+        ru_utf8_tolower(&word[0]);
+    }
+}
+
+int TextAnalyzer::countWords() {
+    return tokens.size();
+}
+
+double TextAnalyzer::countNotRecognizedPart() {
+    int totalWords = 0;
+    int recognized = 0;
+    for (auto&[word, count]: wordToCount) {
+        auto lemmasIdSet = dict->getWordLemmas(word);
+        if (!lemmasIdSet.empty()) {
+            recognized++;
+        }
+        totalWords++;
+    }
+    return static_cast<double>(recognized) / totalWords;
+}
+
+double TextAnalyzer::countAmbiguity() {
+    int totalPossibleLemmas = 0;
+    int wordsWithLemma = 0;
+    for (auto&[word, count]: wordToCount) {
+        auto lemmasIdSet = dict->getWordLemmas(word);
+        if (lemmasIdSet.empty()) {
+            continue;
+        }
+        totalPossibleLemmas += lemmasIdSet.size();
+        wordsWithLemma++;
+    }
+    return static_cast<double>(wordsWithLemma) / totalPossibleLemmas;
 }
 
 TextAnalyzer::TextAnalyzer() = default;

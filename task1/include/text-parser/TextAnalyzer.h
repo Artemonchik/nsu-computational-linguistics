@@ -24,14 +24,20 @@ public:
 
     TextAnalyzer operator+(const TextAnalyzer &rhs) const;
 
-    std::string str() const;
+    std::string str(int limit, std::set<std::string> &props) const;
 
     void setDict(OpenCorpaDict *corpaDict);
+
+    double countNotRecognizedPart();
+
+    double countAmbiguity();
+
+    int countWords();
 
 private:
     void readWords(std::istream &istream);
 
-    void countWords();
+    void countWordsFreq();
 
 private:
     OpenCorpaDict *dict = nullptr;
@@ -39,4 +45,6 @@ private:
     std::unordered_map<std::string, int> wordToCount;
 
     void stripWords();
+
+    void toLower();
 };
