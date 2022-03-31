@@ -4,25 +4,41 @@
 
 #include <sstream>
 #include "../../include/text-parser/TextAnalyzer.h"
+#include "../../include/text-parser/Converter.hpp"
 
-TextAnalyzer::TextAnalyzer(std::istream &inputStream) {
+TextAnalyzer::TextAnalyzer(std::istream& inputStream) {
     readWords(inputStream);
-    stripWords();
-    countWordsFreq();
     toLower();
+    countWordsFreq();
     //TODO to lower case
 }
 
-void TextAnalyzer::readWords(std::istream &inputStream) {
+void TextAnalyzer::readWords(std::istream& inputStream) {
     std::string word;
     while (!inputStream.eof()) {
         inputStream >> word;
-        tokens.push_back(std::move(word));
+        auto wword = convertToWString(word);
+
+        string32 token;
+        for (int i = 0; i < wword.size(); i++) {
+            if (std::iswpunct(wword[i])) {
+                if (!token.empty()) {
+                    tokens.push_back(convertToString(token));
+                }
+                token.resize(0);
+                tokens.push_back(convertToString(string32(1, wword[i])));
+                continue;
+            }
+            token.push_back(wword[i]);
+        }
+        if (token.size() != 0) {
+            tokens.push_back(convertToString(token));
+        }
     }
 }
 
 void TextAnalyzer::countWordsFreq() {
-    for (auto &word: tokens) {
+    for (auto& word: tokens) {
         if (!wordToCount.contains(word)) {
             wordToCount[word] = 0;
         }
@@ -30,8 +46,8 @@ void TextAnalyzer::countWordsFreq() {
     }
 }
 
-TextAnalyzer &TextAnalyzer::operator+=(const TextAnalyzer &rhs) {
-    std::for_each(rhs.wordToCount.begin(), rhs.wordToCount.end(), [this](auto &it) {
+TextAnalyzer& TextAnalyzer::operator+=(const TextAnalyzer& rhs) {
+    std::for_each(rhs.wordToCount.begin(), rhs.wordToCount.end(), [this](auto& it) {
         if (!this->wordToCount.contains(it.first)) {
             this->wordToCount[it.first] = 0;
         }
@@ -41,37 +57,37 @@ TextAnalyzer &TextAnalyzer::operator+=(const TextAnalyzer &rhs) {
     return *this;
 }
 
-TextAnalyzer TextAnalyzer::operator+(const TextAnalyzer &rhs) const {
+TextAnalyzer TextAnalyzer::operator+(const TextAnalyzer& rhs) const {
     TextAnalyzer lhs = *this; // reuse compound assignment
     lhs += rhs;
     return lhs;
 }
 
-TextAnalyzer::TextAnalyzer(TextAnalyzer &&rhs) noexcept {
+TextAnalyzer::TextAnalyzer(TextAnalyzer&& rhs) noexcept {
     *this = std::move(rhs);
 }
 
-TextAnalyzer::TextAnalyzer(const TextAnalyzer &rhs) = default;
+TextAnalyzer::TextAnalyzer(const TextAnalyzer& rhs) = default;
 
-TextAnalyzer &TextAnalyzer::operator=(const TextAnalyzer &rhs) {
+TextAnalyzer& TextAnalyzer::operator=(const TextAnalyzer& rhs) {
     this->wordToCount = rhs.wordToCount;
     this->dict = rhs.dict;
     this->tokens = rhs.tokens;
     return *this;
 };
 
-TextAnalyzer &TextAnalyzer::operator=(TextAnalyzer &&rhs) noexcept {
+TextAnalyzer& TextAnalyzer::operator=(TextAnalyzer&& rhs) noexcept {
     wordToCount = std::move(rhs.wordToCount);
     tokens = std::move(rhs.tokens);
     this->dict = rhs.dict;
     return *this;
 }
 
-std::string TextAnalyzer::str(int limit, std::set<std::string> &props) const {
+std::string TextAnalyzer::str(int limit, std::set<std::string>& props) const {
     std::vector<std::pair<std::string, int>> v;
     v.resize(wordToCount.size());
     std::copy(wordToCount.begin(), wordToCount.end(), v.begin());
-    std::sort(v.begin(), v.end(), [](auto &left, auto &right) {
+    std::sort(v.begin(), v.end(), [](auto& left, auto& right) {
         return left.second > right.second;
     });
     int i = 0;
@@ -87,7 +103,8 @@ std::string TextAnalyzer::str(int limit, std::set<std::string> &props) const {
         }
         auto lemmasIdSet = dict->getWordLemmas(word);
         if (lemmasIdSet.size() == 0) {
-            stringstream << "No lemmas was found for this word";
+            stringstream << "No lemmas was found for this word" << std::endl;
+            result << stringstream.str();
             continue;
         }
         Lemma first_lemma = dict->getLemma(*lemmasIdSet.begin());
@@ -120,24 +137,15 @@ std::string TextAnalyzer::str(int limit, std::set<std::string> &props) const {
     return result.str();
 }
 
-void TextAnalyzer::setDict(OpenCorpaDict *corpaDict) {
+void TextAnalyzer::setDict(OpenCorpaDict* corpaDict) {
     this->dict = corpaDict;
 }
 
-void TextAnalyzer::stripWords() {
-    for (auto &s: tokens) {
-        for (int i = s.length() - 1; i >= 0; i--) {
-            if (::ispunct(s[i])) {
-                s.erase(i, 1);
-            }
-        }
-    }
-}
 
-void ru_utf8_tolower(char *str) {
+void ru_utf8_tolower(char* str) {
     if (!str) return;
-    unsigned char *a, *b;
-    a = (unsigned char *) str;
+    unsigned char* a, * b;
+    a = (unsigned char*) str;
     while (*a != 0) {
         if ((*a >= 0x41) && (*a <= 0x5a)) { // ENG
             *a = 0x61 + (*a - 0x41);
@@ -159,8 +167,15 @@ void ru_utf8_tolower(char *str) {
 }
 
 void TextAnalyzer::toLower() {
-    for (auto &word: tokens) {
-        ru_utf8_tolower(&word[0]);
+    for (auto& word: tokens) {
+        auto wword = convertToWString(word);
+        std::transform(wword.begin(),
+                       wword.end(),
+                       wword.begin(),
+                       [](auto c) {
+                           return std::towlower(c);
+                       });
+        word = convertToString(wword);
     }
 }
 

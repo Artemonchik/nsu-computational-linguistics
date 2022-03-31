@@ -2,7 +2,7 @@
 
 #include <string>
 
-static int russianLower(wchar_t r) {
+static int russianLower(char32_t r) {
     switch (r) {
         case L'А':
             r = L'а';
@@ -104,18 +104,7 @@ static int russianLower(wchar_t r) {
             r = L'я';
             break;
         default:
-            r = std::towlower(r);
+            r = std::tolower(r);
     }
     return r;
-}
-
-static std::wstring make_wstring(std::string a) {
-    std::wstring ws(a.begin(), a.end());
-    return ws;
-}
-
-static std::wstring make_wstring(const char *a) {
-    std::string str(a);
-    std::wstring ws(str.begin(), str.end());
-    return ws;
 }
