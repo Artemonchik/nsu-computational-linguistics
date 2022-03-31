@@ -3,6 +3,7 @@
 //
 
 #include <sstream>
+#include <map>
 #include "../../include/text-parser/TextAnalyzer.h"
 #include "../../include/text-parser/Converter.hpp"
 
@@ -208,6 +209,102 @@ double TextAnalyzer::countAmbiguity() {
         wordsWithLemma++;
     }
     return static_cast<double>(wordsWithLemma) / totalPossibleLemmas;
+}
+
+bool TextAnalyzer::areTokenEquals(std::string& string1, std::string& string2) {
+    if (string1 == string2) {
+        return true;
+    }
+    auto l1 = dict->getWordLemmas(string1);
+    auto l2 = dict->getWordLemmas(string2);
+    std::set<int> intersect;
+    std::set_intersection(l1.begin(), l1.end(),
+                          l2.begin(), l2.end(),
+                          std::inserter(intersect, intersect.begin()));
+    return intersect.size() > 0;
+}
+
+static bool isPunctuation(std::string& token) {
+    string32 wtoken = convertToWString(token);
+    if (wtoken.size() != 1) {
+        return false;
+    }
+    if (std::iswpunct(wtoken[0])) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+std::pair<std::map<std::vector<std::string>, int>, std::map<std::vector<std::string>, int>>
+TextAnalyzer::findExtentions(TextAnalyzer& rhs, int limit) {
+    std::map<std::vector<std::string>, int> l_ngrams;
+    std::map<std::vector<std::string>, int> r_ngrams;
+    for (int i = 0; i < rhs.tokens.size(); i++) {
+        bool contFlag = false;
+        for (int j = 0; j < tokens.size(); j++) {
+            if (i + j >= rhs.tokens.size()) {
+                contFlag = true;
+                break;
+            }
+            if (!areTokenEquals(tokens[j], rhs.tokens[i + j])) {
+                contFlag = true;
+                break;
+            }
+        }
+        if (contFlag) {
+            continue;
+        }
+        auto leftExtensions = getLeftExtentions(i, limit, rhs);
+        while (leftExtensions.size() >= tokens.size()) {
+            if (!l_ngrams.contains(leftExtensions)) {
+                l_ngrams[leftExtensions] = 0;
+            }
+            l_ngrams[leftExtensions] += 1;
+            leftExtensions.erase(leftExtensions.begin());
+        }
+
+        std::vector<std::string> rightExtensions = getRightExtentions(i, limit, rhs);
+        while (rightExtensions.size() >= tokens.size()) {
+            if (!r_ngrams.contains(rightExtensions)) {
+                r_ngrams[rightExtensions] = 0;
+            }
+            r_ngrams[rightExtensions] += 1;
+            rightExtensions.pop_back();
+        }
+    }
+
+    return {l_ngrams, r_ngrams};
+}
+
+std::vector<std::string> TextAnalyzer::getLeftExtentions(int i, int limit, TextAnalyzer& rhs) {
+    std::vector<std::string> leftExtensions = tokens;
+    for (int j = tokens.size(); j < limit; j++) {
+        if (i - j < 0) {
+            break;
+        }
+        if (isPunctuation(rhs.tokens[i - j])) {
+            break;
+        }
+        leftExtensions.push_back(rhs.tokens[i - j]);
+    }
+    std::reverse(leftExtensions.begin(), leftExtensions.end());
+    std::reverse(leftExtensions.end() - tokens.size(), leftExtensions.end());
+    return leftExtensions;
+}
+
+std::vector<std::string> TextAnalyzer::getRightExtentions(int i, int limit, TextAnalyzer& rhs) {
+    std::vector<std::string> rightExtentions = tokens;
+    for (int j = tokens.size(); j < limit; j++) {
+        if (i + j >= rhs.tokens.size()) {
+            break;
+        }
+        if (isPunctuation(rhs.tokens[i + j])) {
+            break;
+        }
+        rightExtentions.push_back(rhs.tokens[i + j]);
+    }
+    return rightExtentions;
 }
 
 TextAnalyzer::TextAnalyzer() = default;
