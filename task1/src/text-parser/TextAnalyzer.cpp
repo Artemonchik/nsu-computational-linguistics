@@ -236,10 +236,23 @@ static bool isPunctuation(std::string& token) {
     }
 }
 
+static std::vector<std::string> normalize(OpenCorpaDict& dict, std::vector<std::string>& tokens) {
+    for (auto& token: tokens) {
+        auto lemmas = dict.getWordLemmas(token);
+        if (lemmas.size() == 0) {
+            continue;
+        }
+        token = (dict.getLemma(*lemmas.begin()).getInitialForm().getWord());
+    }
+    return tokens;
+}
+
+
 std::pair<std::map<std::vector<std::string>, int>, std::map<std::vector<std::string>, int>>
 TextAnalyzer::findExtentions(TextAnalyzer& rhs, int limit) {
     std::map<std::vector<std::string>, int> l_ngrams;
     std::map<std::vector<std::string>, int> r_ngrams;
+    tokens = normalize(*rhs.dict, tokens);
     for (int i = 0; i < rhs.tokens.size(); i++) {
         bool contFlag = false;
         for (int j = 0; j < tokens.size(); j++) {
@@ -277,6 +290,7 @@ TextAnalyzer::findExtentions(TextAnalyzer& rhs, int limit) {
     return {l_ngrams, r_ngrams};
 }
 
+
 std::vector<std::string> TextAnalyzer::getLeftExtentions(int i, int limit, TextAnalyzer& rhs) {
     std::vector<std::string> leftExtensions = tokens;
     for (int j = tokens.size(); j < limit; j++) {
@@ -286,7 +300,12 @@ std::vector<std::string> TextAnalyzer::getLeftExtentions(int i, int limit, TextA
         if (isPunctuation(rhs.tokens[i - j])) {
             break;
         }
-        leftExtensions.push_back(rhs.tokens[i - j]);
+        auto lemmas = dict->getWordLemmas(rhs.tokens[i - j]);
+        if (lemmas.size() == 0) {
+            leftExtensions.push_back(rhs.tokens[i - j]);
+            continue;
+        }
+        leftExtensions.push_back(dict->getLemma(*lemmas.begin()).getInitialForm().getWord());
     }
     std::reverse(leftExtensions.begin(), leftExtensions.end());
     std::reverse(leftExtensions.end() - tokens.size(), leftExtensions.end());
@@ -302,7 +321,12 @@ std::vector<std::string> TextAnalyzer::getRightExtentions(int i, int limit, Text
         if (isPunctuation(rhs.tokens[i + j])) {
             break;
         }
-        rightExtentions.push_back(rhs.tokens[i + j]);
+        auto lemmas = dict->getWordLemmas(rhs.tokens[i + j]);
+        if (lemmas.size() == 0) {
+            rightExtentions.push_back(rhs.tokens[i + j]);
+            continue;
+        }
+        rightExtentions.push_back(dict->getLemma(*lemmas.begin()).getInitialForm().getWord());
     }
     return rightExtentions;
 }

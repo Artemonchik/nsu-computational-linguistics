@@ -55,7 +55,7 @@ int task2() {
         result += text;
     }
 
-    std::string phraseStr = "зевс";
+    std::string phraseStr = "увидел, что";
     auto strStream = std::istringstream(phraseStr);
     TextAnalyzer phrase(strStream);
     phrase.setDict(&openCorpaDict);
@@ -76,6 +76,9 @@ int task2() {
         for (auto& str: left_ext.first) {
             res_str += str + " ";
         }
+//        if(left_ext.second <= 1){
+//            continue;
+//        }
         res_str.back() = '\0';
         std::printf("<л,%s,%d>\n", res_str.c_str(), left_ext.second);
     }

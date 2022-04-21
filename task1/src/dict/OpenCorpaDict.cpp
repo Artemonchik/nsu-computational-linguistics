@@ -4,12 +4,12 @@
 #include "../../include/dict/OpenCorpaDict.h"
 #include "pugixml.hpp"
 
-OpenCorpaDict::OpenCorpaDict(const std::string &dictFilePath) {
+OpenCorpaDict::OpenCorpaDict(const std::string& dictFilePath) {
     loadDescriptions(dictFilePath);
     initHashtable();
 }
 
-void OpenCorpaDict::loadDescriptions(const std::string &dictFilePath) {
+void OpenCorpaDict::loadDescriptions(const std::string& dictFilePath) {
     pugi::xml_document doc;
     doc.load_file(dictFilePath.c_str());
     for (pugi::xml_node description: doc.child("dictionary").child("lemmata").children("lemma")) {
@@ -25,9 +25,9 @@ void OpenCorpaDict::loadDescriptions(const std::string &dictFilePath) {
 }
 
 void OpenCorpaDict::initHashtable() {
-    for (auto &lemma: lemmas) {
+    for (auto& lemma: lemmas) {
         int id = lemma.getId();
-        for (auto &wordform: lemma.getForms()) {
+        for (auto& wordform: lemma.getForms()) {
             wordToLemmasId[wordform.getWord()].insert(id);
         }
     }
@@ -43,15 +43,15 @@ WordForm OpenCorpaDict::initWordForm(pugi::xml_node wordFormNode) {
     return {std::move(initial_word), std::move(props)};
 }
 
-const std::set<int> &OpenCorpaDict::getWordLemmas(const std::string &word) {
+const std::set<int>& OpenCorpaDict::getWordLemmas(const std::string& word) {
     return wordToLemmasId[word];
 }
 
 Lemma OpenCorpaDict::getLemma(int idx) const {
     auto vectorIdx = std::lower_bound(lemmas.begin(), lemmas.end(), idx,
-                                     [](const auto &info, int value) {
-                                         return info.getId() < value;
-                                     });
+                                      [](const auto& info, int value) {
+                                          return info.getId() < value;
+                                      });
     return *vectorIdx;
 }
 
