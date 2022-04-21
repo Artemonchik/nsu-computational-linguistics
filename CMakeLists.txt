@@ -23,8 +23,3 @@ target_include_directories(termcolor INTERFACE
         $<BUILD_INTERFACE:${termcolor_SOURCE_DIR}/include>)
 
 target_link_libraries(task1 pugixml termcolor)
-
-get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
-foreach(dir ${dirs})
-    message(STATUS "dir='${dir}'")
-endforeach()
