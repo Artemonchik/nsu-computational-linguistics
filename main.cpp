@@ -93,6 +93,66 @@ int task2() {
     return 0;
 }
 
+int task3(std::vector<TextAnalyzer>& texts, OpenCorpaDict& openCorpaDict) {
+    TextAnalyzer analyzer;
+    int corpusSize = 0;
+    for (auto& text: texts) {
+        text.setDict(&openCorpaDict);
+        text.normalize();
+        analyzer += text;
+        corpusSize++;
+    }
+    analyzer.setDict(&openCorpaDict);
+    auto ngrams = TextAnalyzer::findStableNgramms(analyzer, corpusSize);
+    std::vector<std::pair<NGram, NGramInfo>> ngramsVector;
+    for (auto& [ngram, info]: ngrams) {
+        if (ngram.size() >= 4) {
+            ngramsVector.emplace_back(ngram, info);
+        }
+    }
+    std::sort(ngramsVector.begin(), ngramsVector.end(),
+              [](std::pair<NGram, NGramInfo>& a, std::pair<NGram, NGramInfo>& b) {
+                  return a.first.size() > b.first.size();
+              });
+    std::sort(ngramsVector.begin(), ngramsVector.end(),
+              [](std::pair<NGram, NGramInfo>& a, std::pair<NGram, NGramInfo>& b) {
+                  return a.second.stability < b.second.stability;
+              });
+    int i = 0;
+    for (auto& [k, v]: ngramsVector) {
+        i++;
+        if (i == 1000) {
+            break;
+        }
+
+        std::cout << "\"";
+        for (auto& word: k) {
+            std::cout << word << " ";
+        }
+        std::cout << "\" ";
+
+        std::cout << v.count << " " <<
+                  v.textNums.size() << " "
+                  << std::setprecision(3) << v.stability << " " <<
+                  std::endl;
+    }
+    std::cout << ngrams.size();
+    return 0;
+}
+
 int main() {
-    return task2();
+    std::setlocale(LC_ALL, "ru_RU.UTF-8");
+    std::wcout.imbue(std::locale("ru_RU.UTF-8"));
+
+    OpenCorpaDict openCorpaDict("../dict/dict.opcorpora.xml");
+    std::string path("../texts");
+
+    std::vector<TextAnalyzer> texts;
+
+    for (const auto& entry: std::filesystem::directory_iterator(path)) {
+        std::fstream f(entry.path(), std::ios::in);
+        texts.emplace_back(f);
+    }
+
+    return task3(texts, openCorpaDict);
 }

@@ -6,6 +6,7 @@
 #include <map>
 #include "../../include/text-parser/TextAnalyzer.h"
 #include "../../include/text-parser/Converter.hpp"
+#include "cmath"
 
 TextAnalyzer::TextAnalyzer(std::istream& inputStream) {
     readWords(inputStream);
@@ -40,7 +41,7 @@ void TextAnalyzer::readWords(std::istream& inputStream) {
 
 void TextAnalyzer::countWordsFreq() {
     for (auto& word: tokens) {
-        if (!wordToCount.contains(word)) {
+        if (!wordToCount.count(word)) {
             wordToCount[word] = 0;
         }
         wordToCount[word]++;
@@ -49,12 +50,14 @@ void TextAnalyzer::countWordsFreq() {
 
 TextAnalyzer& TextAnalyzer::operator+=(const TextAnalyzer& rhs) {
     std::for_each(rhs.wordToCount.begin(), rhs.wordToCount.end(), [this](auto& it) {
-        if (!this->wordToCount.contains(it.first)) {
+        if (!this->wordToCount.count(it.first)) {
             this->wordToCount[it.first] = 0;
         }
         this->wordToCount[it.first] += it.second;
     });
     tokens.insert(tokens.end(), rhs.tokens.begin(), rhs.tokens.end());
+    tokens.emplace_back(DELIMETER);
+    dict = rhs.dict;
     return *this;
 }
 
@@ -93,7 +96,7 @@ std::string TextAnalyzer::str(int limit, std::set<std::string>& props) const {
     });
     int i = 0;
     std::stringstream result;
-    for (auto &[word, count]: v) {
+    for (auto& [word, count]: v) {
         std::stringstream stringstream;
         if (i > limit) {
             break;
@@ -187,7 +190,7 @@ int TextAnalyzer::countWords() {
 double TextAnalyzer::countNotRecognizedPart() {
     int totalWords = 0;
     int recognized = 0;
-    for (auto&[word, count]: wordToCount) {
+    for (auto& [word, count]: wordToCount) {
         auto lemmasIdSet = dict->getWordLemmas(word);
         if (!lemmasIdSet.empty()) {
             recognized++;
@@ -200,7 +203,7 @@ double TextAnalyzer::countNotRecognizedPart() {
 double TextAnalyzer::countAmbiguity() {
     int totalPossibleLemmas = 0;
     int wordsWithLemma = 0;
-    for (auto&[word, count]: wordToCount) {
+    for (auto& [word, count]: wordToCount) {
         auto lemmasIdSet = dict->getWordLemmas(word);
         if (lemmasIdSet.empty()) {
             continue;
@@ -252,7 +255,7 @@ std::pair<std::map<std::vector<std::string>, int>, std::map<std::vector<std::str
 TextAnalyzer::findExtentions(TextAnalyzer& rhs, int limit) {
     std::map<std::vector<std::string>, int> l_ngrams;
     std::map<std::vector<std::string>, int> r_ngrams;
-    tokens = normalize(*rhs.dict, tokens);
+    tokens = ::normalize(*rhs.dict, tokens);
     for (int i = 0; i < rhs.tokens.size(); i++) {
         bool contFlag = false;
         for (int j = 0; j < tokens.size(); j++) {
@@ -270,7 +273,7 @@ TextAnalyzer::findExtentions(TextAnalyzer& rhs, int limit) {
         }
         auto leftExtensions = getLeftExtentions(i, limit, rhs);
         while (leftExtensions.size() >= tokens.size()) {
-            if (!l_ngrams.contains(leftExtensions)) {
+            if (!l_ngrams.count(leftExtensions)) {
                 l_ngrams[leftExtensions] = 0;
             }
             l_ngrams[leftExtensions] += 1;
@@ -279,7 +282,7 @@ TextAnalyzer::findExtentions(TextAnalyzer& rhs, int limit) {
 
         std::vector<std::string> rightExtensions = getRightExtentions(i, limit, rhs);
         while (rightExtensions.size() >= tokens.size()) {
-            if (!r_ngrams.contains(rightExtensions)) {
+            if (!r_ngrams.count(rightExtensions)) {
                 r_ngrams[rightExtensions] = 0;
             }
             r_ngrams[rightExtensions] += 1;
@@ -331,4 +334,103 @@ std::vector<std::string> TextAnalyzer::getRightExtentions(int i, int limit, Text
     return rightExtentions;
 }
 
+void TextAnalyzer::normalize() {
+    for (auto& word: tokens) {
+        auto& lemmas = dict->getWordLemmas(word);
+        if (lemmas.empty()) {
+            continue;
+        }
+        auto lemma = dict->getLemma(*lemmas.begin());
+        word = lemma.getInitialForm().getWord();
+    }
+}
+
 TextAnalyzer::TextAnalyzer() = default;
+
+std::map<NGram, NGramInfo>
+TextAnalyzer::findNgrams(TextAnalyzer& text, int size, std::map<NGram, NGramInfo>* previous_ptr) {
+    std::map<NGram, NGramInfo> ngramsToCount;
+    int textNum = 1;
+    if (previous_ptr == nullptr) {
+        for (int i = 0; i < text.tokens.size() - size; i++) {
+            if (text.tokens[i + size] == DELIMETER) {
+                textNum++;
+                i += size;
+                continue;
+            }
+            NGram nGram(text.tokens.begin() + i, text.tokens.begin() + i + size);
+            if (ngramsToCount.count(nGram) == 0) {
+                ngramsToCount[nGram] = {0, {}, {}, 0};
+            }
+            ngramsToCount[nGram].count += 1;
+            ngramsToCount[nGram].position.insert({textNum, i});
+            ngramsToCount[nGram].textNums.insert(textNum);
+        }
+    } else {
+        for (auto& [ngram, ngramInfo]: *previous_ptr) {
+            auto& positions = ngramInfo.position;
+            for (auto [textNum, i]: positions) {
+                if (text.tokens.size() <= i + size) {
+                    continue;
+                }
+                NGram nGram(text.tokens.begin() + i, text.tokens.begin() + i + size);
+                if (ngramsToCount.count(nGram) == 0) {
+                    ngramsToCount[nGram] = {0, {}, {}, 0};
+                }
+                ngramsToCount[nGram].count += 1;
+                ngramsToCount[nGram].position.insert({textNum, i});
+
+                ngramsToCount[nGram].textNums.insert(textNum);
+                NGram lNgram(text.tokens.begin() + i, text.tokens.begin() + i + size - 1);
+                NGram rNgram(text.tokens.begin() + i + 1, text.tokens.begin() + i + size);
+                std::map<NGram, NGramInfo>& previous = *previous_ptr;
+                for (auto& p_ngram: std::vector{lNgram, rNgram}) {
+                    if (previous.count(p_ngram) == 0) {
+                        continue;
+                    }
+                    if (previous[p_ngram].stability <
+                        static_cast<float>(ngramsToCount[nGram].count) / previous[p_ngram].count) {
+                        previous[p_ngram].stability =
+                                static_cast<float>(ngramsToCount[nGram].count) / previous[p_ngram].count;
+                    }
+                }
+            }
+        }
+    }
+    return ngramsToCount;
+}
+
+std::map<NGram, NGramInfo> TextAnalyzer::filterNgrams(std::map<NGram, NGramInfo>& ngramsToCount) {
+    std::map<NGram, NGramInfo> res;
+    for (auto& [ngram, info]: ngramsToCount) {
+        if (info.count >= 2) {
+            res[ngram] = info;
+        }
+    }
+    return res;
+}
+
+std::map<NGram, NGramInfo> TextAnalyzer::findStableNgramms(TextAnalyzer& text, int corpusSize) {
+    std::map<NGram, NGramInfo> stableNGrams;
+    std::map<NGram, NGramInfo> ngramToNgramInfo;
+    std::map<NGram, NGramInfo> prevNgramToNgramInfo = findNgrams(text, 2, nullptr);
+    prevNgramToNgramInfo = filterNgrams(prevNgramToNgramInfo);
+    int N = 3;
+    while (true) {
+        ngramToNgramInfo = findNgrams(text, N, &prevNgramToNgramInfo);
+
+        for (auto& [ngram, info]: prevNgramToNgramInfo) {
+            float df = info.textNums.size();
+            float tf = static_cast<float>(info.count) / text.tokens.size();
+            info.tfidf = tf * std::log(static_cast<float>(corpusSize) / (df + 1));
+            stableNGrams[ngram] = info;
+        }
+        ngramToNgramInfo = filterNgrams(ngramToNgramInfo);
+        if (ngramToNgramInfo.empty()) {
+            break;
+        }
+        prevNgramToNgramInfo = std::move(ngramToNgramInfo);
+        N++;
+    }
+    return stableNGrams;
+}

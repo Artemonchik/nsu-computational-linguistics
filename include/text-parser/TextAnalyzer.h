@@ -6,7 +6,21 @@
 #include <algorithm>
 #include <map>
 #include <optional>
+#include <vector>
 #include "../dict/OpenCorpaDict.h"
+
+#define DELIMETER "$$##$$"
+
+using NGram = std::vector<std::string>;
+
+struct NGramInfo {
+    int count = 0;
+    // text num, pos num
+    std::set<std::pair<int, int>> position;
+    std::set<int> textNums;
+    float stability = 0;
+    float tfidf = 0;
+};
 
 class TextAnalyzer {
 public:
@@ -39,6 +53,10 @@ public:
     std::pair<std::map<std::vector<std::string>, int>, std::map<std::vector<std::string>, int>>
     findExtentions(TextAnalyzer& rhs, int limit);
 
+    void normalize();
+
+    static std::map<NGram, NGramInfo> findStableNgramms(TextAnalyzer& text, int corpusSize);
+
 private:
     void readWords(std::istream& istream);
 
@@ -56,4 +74,9 @@ private:
     std::vector<std::string> getLeftExtentions(int i, int limit, TextAnalyzer& rhs);
 
     std::vector<std::string> getRightExtentions(int i, int limit, TextAnalyzer& rhs);
+
+    static std::map<NGram, NGramInfo>
+    findNgrams(TextAnalyzer& text, int size, std::map<NGram, NGramInfo>* previous_ptr);
+
+    static std::map<NGram, NGramInfo> filterNgrams(std::map<NGram, NGramInfo>& ngramsToCount);
 };

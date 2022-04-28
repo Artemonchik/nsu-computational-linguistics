@@ -1,6 +1,7 @@
 
 
 #include <iostream>
+#include <algorithm>
 #include "../../include/dict/OpenCorpaDict.h"
 #include "pugixml.hpp"
 
@@ -49,7 +50,7 @@ const std::set<int>& OpenCorpaDict::getWordLemmas(const std::string& word) {
 
 Lemma OpenCorpaDict::getLemma(int idx) const {
     auto vectorIdx = std::lower_bound(lemmas.begin(), lemmas.end(), idx,
-                                      [](const auto& info, int value) {
+                                      [](const auto& info, const int& value) {
                                           return info.getId() < value;
                                       });
     return *vectorIdx;
