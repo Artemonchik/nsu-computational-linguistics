@@ -8,6 +8,7 @@
 #include <optional>
 #include <vector>
 #include "../dict/OpenCorpaDict.h"
+#include "../Models.hpp"
 
 #define DELIMETER "$$##$$"
 
@@ -24,13 +25,13 @@ struct NGramInfo {
 
 class TextAnalyzer {
 public:
-    explicit TextAnalyzer(std::istream& istream);
+    explicit TextAnalyzer(std::istream& istream, std::string name);
 
     TextAnalyzer();
 
-    TextAnalyzer(const TextAnalyzer& rhs);
+    TextAnalyzer(const TextAnalyzer& other);
 
-    TextAnalyzer(TextAnalyzer&& rhs) noexcept;
+    TextAnalyzer(TextAnalyzer&& other);
 
     TextAnalyzer& operator=(const TextAnalyzer& other);
 
@@ -57,6 +58,11 @@ public:
 
     static std::map<NGram, NGramInfo> findStableNgramms(TextAnalyzer& text, int corpusSize);
 
+    std::vector<std::tuple<int, std::string, std::vector<std::string>>>
+    findSemanticEntries(const std::vector<Model>& models);
+
+    const std::string& getName() const;
+
 private:
     void readWords(std::istream& istream);
 
@@ -68,6 +74,7 @@ private:
     OpenCorpaDict* dict = nullptr;
     std::vector<std::string> tokens;
     std::unordered_map<std::string, int> wordToCount;
+    std::string name;
 
     bool areTokenEquals(std::string& string1, std::string& string2);
 

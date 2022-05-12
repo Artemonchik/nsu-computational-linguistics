@@ -8,8 +8,8 @@
 #include "../../include/text-parser/Converter.hpp"
 #include "cmath"
 
-TextAnalyzer::TextAnalyzer(std::istream& inputStream) {
-    readWords(inputStream);
+TextAnalyzer::TextAnalyzer(std::istream& istream, std::string name) : name(std::move(name)) {
+    readWords(istream);
     toLower();
     countWordsFreq();
     //TODO to lower case
@@ -67,13 +67,10 @@ TextAnalyzer TextAnalyzer::operator+(const TextAnalyzer& rhs) const {
     return lhs;
 }
 
-TextAnalyzer::TextAnalyzer(TextAnalyzer&& rhs) noexcept {
-    *this = std::move(rhs);
-}
-
-TextAnalyzer::TextAnalyzer(const TextAnalyzer& rhs) = default;
-
 TextAnalyzer& TextAnalyzer::operator=(const TextAnalyzer& rhs) {
+    if (this == &rhs) {
+        return *this;
+    }
     this->wordToCount = rhs.wordToCount;
     this->dict = rhs.dict;
     this->tokens = rhs.tokens;
@@ -433,4 +430,42 @@ std::map<NGram, NGramInfo> TextAnalyzer::findStableNgramms(TextAnalyzer& text, i
         N++;
     }
     return stableNGrams;
+}
+
+std::vector<std::tuple<int, std::string, std::vector<std::string>>>
+TextAnalyzer::findSemanticEntries(const std::vector<Model>& models) {
+    std::vector<std::tuple<int, std::string, std::vector<std::string>>> result;
+    for (int i = 0; i < tokens.size(); i++) {
+        for (auto& model: models) {
+            if (i + model.matchers.size() >= tokens.size()) {
+                continue;
+            }
+            bool exitFlag = false;
+            for (int j = 0; j < model.matchers.size(); j++) {
+                if (!model.matchers[j]->match(tokens[i + j])) {
+                    exitFlag = true;
+                    break;
+                }
+            }
+            if (!exitFlag) {
+                result.emplace_back(i,
+                                    model.name,
+                                    std::vector(tokens.begin() + i, tokens.begin() + i + model.matchers.size()));
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+TextAnalyzer::TextAnalyzer(const TextAnalyzer& other) {
+    this->operator=(other);
+}
+
+TextAnalyzer::TextAnalyzer(TextAnalyzer&& other) {
+    this->operator=(std::move(other));
+}
+
+const std::string& TextAnalyzer::getName() const {
+    return name;
 }
