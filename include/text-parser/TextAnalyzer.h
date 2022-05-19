@@ -12,7 +12,7 @@
 
 #define DELIMETER "$$##$$"
 
-using NGram = std::vector<std::string>;
+#include "../types.hpp"
 
 struct NGramInfo {
     int count = 0;
@@ -58,8 +58,8 @@ public:
 
     static std::map<NGram, NGramInfo> findStableNgramms(TextAnalyzer& text, int corpusSize);
 
-    std::vector<std::tuple<int, std::string, std::vector<std::string>>>
-    findSemanticEntries(const std::vector<Model>& models);
+    void
+    findSemanticEntries(std::vector<Model>& models);
 
     const std::string& getName() const;
 
@@ -86,4 +86,6 @@ private:
     findNgrams(TextAnalyzer& text, int size, std::map<NGram, NGramInfo>* previous_ptr);
 
     static std::map<NGram, NGramInfo> filterNgrams(std::map<NGram, NGramInfo>& ngramsToCount);
+
+    std::vector<std::string>::iterator getNextSentence(std::vector<std::string>::iterator iterator);
 };

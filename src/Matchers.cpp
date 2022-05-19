@@ -1,14 +1,15 @@
 
 #include <string>
 #include <algorithm>
+#include <vector>
 
 #include "../include/Matchers.hpp"
 
-bool WordsMatcher::match(const std::string& word) {
+bool WordsMatcher::match(Sentence::iterator begin, Sentence::iterator end) {
     std::string wordToSearch;
-    auto& lemmas = dict->getWordLemmas(word);
+    auto& lemmas = dict->getWordLemmas(*begin);
     if (lemmas.empty()) {
-        wordToSearch = word;
+        wordToSearch = *begin;
     } else {
         auto lemma = dict->getLemma(*lemmas.begin());
         wordToSearch = lemma.getInitialForm().getWord();
@@ -28,14 +29,18 @@ WordsMatcher::WordsMatcher(const std::vector<std::string>& words, OpenCorpaDict*
     }
 }
 
+int WordsMatcher::size() {
+    return 1;
+}
+
 PropsMatcher::PropsMatcher(std::set<std::string> propsToMatch, OpenCorpaDict* dict) : propsToMatch(
         std::move(propsToMatch)),
                                                                                       dict(dict) {
 
 }
 
-bool PropsMatcher::match(const std::string& word) {
-    auto& lemmas = dict->getWordLemmas(word);
+bool PropsMatcher::match(Sentence::iterator begin, Sentence::iterator end) {
+    auto& lemmas = dict->getWordLemmas(*begin);
     if (lemmas.empty()) {
         return false;
     }
@@ -44,6 +49,34 @@ bool PropsMatcher::match(const std::string& word) {
     return std::includes(props.begin(), props.end(), propsToMatch.begin(), propsToMatch.end());
 }
 
-bool AnyMatcher::match(const std::string& word) {
+int PropsMatcher::size() {
+    return 1;
+}
+
+bool AnyMatcher::match(Sentence::iterator begin, Sentence::iterator end) {
     return true;
 }
+
+int AnyMatcher::size() {
+    return 1;
+}
+
+bool SequentialMatcher::match(Sentence::iterator begin, Sentence::iterator end) {
+    if (std::distance(begin, end) < matchers.size()) {
+        return false;
+    }
+    for (int i = 0; i < matchers.size(); i++) {
+        if (!matchers[i]->match(begin + i, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+SequentialMatcher::SequentialMatcher(std::vector<std::shared_ptr<Matcher>> matchers) : matchers(std::move(matchers)) {
+}
+
+int SequentialMatcher::size() {
+    return matchers.size();
+}
+

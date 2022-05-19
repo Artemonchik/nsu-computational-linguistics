@@ -4,6 +4,7 @@ std::vector<Model> getModels(OpenCorpaDict* dict) {
     Model model1 =
             {
                     "Moving",
+                    {},
                     {
                             std::make_shared<PropsMatcher>(std::set<std::string>{"NOUN", "anim"}, dict),
                             std::make_shared<WordsMatcher>(
@@ -19,6 +20,7 @@ std::vector<Model> getModels(OpenCorpaDict* dict) {
     Model model2 =
             {
                     "Pray",
+                    {},
                     {
                             std::make_shared<WordsMatcher>(
                                     std::vector<std::string>{"молиться", "молить", "поклоняться", "возлагать",
@@ -32,6 +34,7 @@ std::vector<Model> getModels(OpenCorpaDict* dict) {
 
     Model model3{
             "Hero action",
+            {},
             {
                     std::make_shared<WordsMatcher>(
                             std::vector<std::string>{"геракл", "персей", "зевс", "тесей", "ахилл"},
@@ -45,6 +48,7 @@ std::vector<Model> getModels(OpenCorpaDict* dict) {
 
     Model model4{
             "Killing",
+            {},
             {
                     std::make_shared<WordsMatcher>(
                             std::vector<std::string>{"убить", "убил", "уничтожил", "уничтожить", "казнить",
@@ -57,6 +61,7 @@ std::vector<Model> getModels(OpenCorpaDict* dict) {
 
     Model model5{
             "Woman description",
+            {},
             {std::make_shared<PropsMatcher>(
                     std::set<std::string>{"ADJF"},
                     dict),
@@ -67,6 +72,7 @@ std::vector<Model> getModels(OpenCorpaDict* dict) {
 
     Model model6{
             "fight",
+            {},
             {
                     std::make_shared<PropsMatcher>(
                             std::set<std::string>{"NOUN", "anim"},
@@ -74,7 +80,6 @@ std::vector<Model> getModels(OpenCorpaDict* dict) {
                     std::make_shared<PropsMatcher>(
                             std::set<std::string>{"VERB"},
                             dict),
-                    std::make_shared<AnyMatcher>(),
                     std::make_shared<WordsMatcher>(
                             std::vector<std::string>{"бой", "битва", "сражение", "драка", "война", "убийство"},
                             dict)}
@@ -82,6 +87,7 @@ std::vector<Model> getModels(OpenCorpaDict* dict) {
 
     Model model7{
             "love",
+            {},
             {
                     std::make_shared<PropsMatcher>(
                             std::set<std::string>{"NOUN", "anim"},
@@ -96,21 +102,49 @@ std::vector<Model> getModels(OpenCorpaDict* dict) {
             }
     };
 
+    std::vector<std::shared_ptr<Matcher>> matchers{
+            std::make_shared<PropsMatcher>(
+                    std::set<std::string>{"ADJF"},
+                    dict),
+            std::make_shared<WordsMatcher>(
+                    std::vector<std::string>{"боль", "страдание"},
+                    dict),
+    };
     Model model8{
-            "love",
+            "pain",
+            {},
             {
-                    std::make_shared<PropsMatcher>(
-                            std::set<std::string>{"NOUN", "anim"},
-                            dict),
-                    std::make_shared<WordsMatcher>(
-                            std::vector<std::string>{"любить", "нравиться", "обожать", "влюбиться"},
-                            dict),
-
-                    std::make_shared<PropsMatcher>(
-                            std::set<std::string>{"NOUN", "anim"},
-                            dict)
+                    std::make_shared<SequentialMatcher>(matchers),
             }
     };
 
-    return {model1, model2, model3, model4, model5, model6, model7};
+    Model model9{
+            "fear",
+            {}, {
+                    std::make_shared<PropsMatcher>(std::set<std::string>{"NOUN", "anim"}, dict),
+                    std::make_shared<SequentialMatcher>(std::vector<std::shared_ptr<Matcher>>{
+                            std::make_shared<PropsMatcher>(std::set<std::string>{"VERB"}, dict),
+                            std::make_shared<WordsMatcher>(
+                                    std::vector<std::string>{"ужас", "страх"},
+                                    dict),
+                    })
+            }
+    };
+
+    Model model10{
+            "world description",
+            {}, {
+                    std::make_shared<PropsMatcher>(std::set<std::string>{"VERB"}, dict),
+                    std::make_shared<SequentialMatcher>(std::vector<std::shared_ptr<Matcher>>{
+                            std::make_shared<PropsMatcher>(std::set<std::string>{"ADJF"}, dict),
+                            std::make_shared<WordsMatcher>(
+                                    std::vector<std::string>{"мир", "земля"},
+                                    dict),
+                    })
+            }
+    };
+
+
+    return {model1, model2, model3, model4, model5, model6, model7, model8, model9, model10};
+//    return {model5};
 }

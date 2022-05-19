@@ -146,14 +146,16 @@ int task4(std::vector<TextAnalyzer>& texts, OpenCorpaDict& openCorpaDict) {
     for (auto& text: texts) {
         text.setDict(&openCorpaDict);
         text.normalize();
-        auto semanticEntries = text.findSemanticEntries(models);
-        for (auto& [num, name, words]: semanticEntries) {
-            std::cout << name << ":" << text.getName() << ":" << num << std::endl;
-            std::copy(words.begin(),
-                      words.end(),
-                      std::ostream_iterator<std::string>(std::cout, " "));
-            std::cout << std::endl;
-        }
+        text.findSemanticEntries(models);
+    }
+    for (auto& model: models) {
+        std::cout << model.name << ", count: " << model.sentences.size() << std::endl;
+//        for (auto& sentence: model.sentences) {
+//            for (auto& word: sentence) {
+//                std::cout << word << " ";
+//            }
+//            std::cout << std::endl;
+//        }
     }
     return 0;
 }
@@ -177,5 +179,9 @@ int main() {
     }
 //    TextAnalyzer textAnalyzer(std::stringstream("убил человека"));
 //    auto result = textAnalyzer.findSemanticEntries(getModels(openCorpaDict));
-    return task4(texts, openCorpaDict);
+
+    task4(texts, openCorpaDict);
+    auto t3 = std::chrono::steady_clock::now();
+    std::cout << "task was completed in "
+              << std::chrono::duration_cast<std::chrono::seconds>(t3 - t2).count() << " seconds" << std::endl;
 }

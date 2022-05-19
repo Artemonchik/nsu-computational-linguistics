@@ -7,6 +7,7 @@
 #include "../../include/text-parser/TextAnalyzer.h"
 #include "../../include/text-parser/Converter.hpp"
 #include "cmath"
+#include "vector"
 
 TextAnalyzer::TextAnalyzer(std::istream& istream, std::string name) : name(std::move(name)) {
     readWords(istream);
@@ -432,30 +433,80 @@ std::map<NGram, NGramInfo> TextAnalyzer::findStableNgramms(TextAnalyzer& text, i
     return stableNGrams;
 }
 
-std::vector<std::tuple<int, std::string, std::vector<std::string>>>
-TextAnalyzer::findSemanticEntries(const std::vector<Model>& models) {
-    std::vector<std::tuple<int, std::string, std::vector<std::string>>> result;
-    for (int i = 0; i < tokens.size(); i++) {
-        for (auto& model: models) {
-            if (i + model.matchers.size() >= tokens.size()) {
-                continue;
-            }
-            bool exitFlag = false;
-            for (int j = 0; j < model.matchers.size(); j++) {
-                if (!model.matchers[j]->match(tokens[i + j])) {
-                    exitFlag = true;
-                    break;
-                }
-            }
-            if (!exitFlag) {
-                result.emplace_back(i,
-                                    model.name,
-                                    std::vector(tokens.begin() + i, tokens.begin() + i + model.matchers.size()));
+Sentence::iterator TextAnalyzer::getNextSentence(Sentence::iterator iterator) {
+    for (auto word = iterator; word != tokens.end(); word++) {
+        if (*word == ".") {
+            return word + 1;
+        }
+        if (std::distance(iterator, word) > 9) {
+            return word + 1;
+        }
+    }
+    return tokens.end();
+}
+
+std::vector<bool> sumRows(std::vector<std::vector<bool>> matrix) {
+    std::vector<bool> answer(matrix.size(), false);
+    for (int i = 0; i < matrix.size(); i++) {
+        for (int j = 0; j < matrix[0].size(); j++) {
+            if (matrix[i][j]) {
+                answer[i] = true;
                 break;
             }
         }
     }
-    return result;
+    return answer;
+}
+
+std::vector<bool> sumColumns(std::vector<std::vector<bool>> matrix) {
+    std::vector<bool> answer(matrix[0].size(), false);
+    for (int j = 0; j < matrix[0].size(); j++) {
+        for (int i = 0; i < matrix.size(); i++) {
+            if (matrix[i][j]) {
+                answer[j] = true;
+                break;
+            }
+        }
+    }
+    return answer;
+}
+
+void
+TextAnalyzer::findSemanticEntries(std::vector<Model>& models) {
+    std::vector<std::tuple<int, std::string, std::vector<std::string>>> result;
+    for (auto sentenceBegin = tokens.begin(), sentenceEnd = getNextSentence(tokens.begin());
+         sentenceBegin != tokens.end();
+         sentenceBegin = sentenceEnd, sentenceEnd = getNextSentence(sentenceEnd)) {
+        for (auto& model: models) {
+            std::vector<std::vector<bool>> matrix(
+                    model.matchers.size(),
+                    std::vector<bool>(std::distance(sentenceBegin, sentenceEnd), false));
+
+            for (auto word = sentenceBegin; word != sentenceEnd; word++) {
+                for (int matcherIdx = 0; matcherIdx < model.matchers.size(); matcherIdx++) {
+                    if (model.matchers[matcherIdx]->match(word, sentenceEnd)) {
+                        for (auto wordToAppend = word;
+                             wordToAppend != word + model.matchers[matcherIdx]->size(); wordToAppend++) {
+                            matrix[matcherIdx][std::distance(sentenceBegin, wordToAppend)] = true;
+                        }
+
+                    }
+                }
+            }
+
+            auto answ = sumRows(matrix);
+            auto positions = sumColumns(matrix);
+            if (std::count(answ.begin(), answ.end(), true) == model.matchers.size()
+                and std::count(positions.begin(), positions.end(), true) > model.matchers.size()) {
+                model.sentences.emplace_back();
+                for (int i = 0; i < positions.size(); i++) {
+                    if (positions[i]) {
+                        model.sentences[model.sentences.size() - 1].push_back(*(sentenceBegin + i));
+                    }
+                }
+            }
+        }
+    }
 }
 
 TextAnalyzer::TextAnalyzer(const TextAnalyzer& other) {

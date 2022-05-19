@@ -18,7 +18,7 @@ target_include_directories(pugixml INTERFACE
         $<BUILD_INTERFACE:${pugixml_SOURCE_DIR}/src>)
 
 
-add_executable(task1 main.cpp src/dict/OpenCorpaDict.cpp include/dict/OpenCorpaDict.h src/dict/WordForm.cpp include/dict/WordForm.h src/dict/Lemma.cpp include/dict/Lemma.h src/text-parser/TextAnalyzer.cpp include/text-parser/TextAnalyzer.h src/text-parser/Converter.cpp include/text-parser/Converter.hpp src/Matchers.cpp include/Matchers.hpp include/Models.hpp src/Models.cpp)
+add_executable(task1 main.cpp src/dict/OpenCorpaDict.cpp include/dict/OpenCorpaDict.h src/dict/WordForm.cpp include/dict/WordForm.h src/dict/Lemma.cpp include/dict/Lemma.h src/text-parser/TextAnalyzer.cpp include/text-parser/TextAnalyzer.h src/text-parser/Converter.cpp include/text-parser/Converter.hpp src/Matchers.cpp include/Matchers.hpp include/Models.hpp src/Models.cpp include/types.hpp)
 target_include_directories(termcolor INTERFACE
         $<BUILD_INTERFACE:${termcolor_SOURCE_DIR}/include>)
 
